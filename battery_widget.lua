@@ -18,35 +18,46 @@ function battery.set_ac(ac)
    battery.ac_path = ac
 end
 
+function battery.read_state()
+   local f = io.open(battery.path .. "/capacity", "r")
+   battery.perc = f:read("*line")
+   f:close()
+
+   local f = io.open(battery.path .. "/status", "r")
+   battery.status = f:read("*line")
+   f:close()
+
+   f = io.input(battery.ac_path .. "/online", "r")
+   battery.ac_online = f:read("*line")
+   f:close()
+end
+
 function battery.update()
-   io.input(battery.path .. "/capacity")
-   battery.perc = io.read("*line")
-   local perc = battery.perc
-   io.input(battery.path .. "/status")
-   local status = io.read("*line")
+   battery.read_state()
+
    local status_short = "?"
-   if status == "Full" then
+   if battery.status == "Full" then
       status_short = "F"
-   elseif status == "Discharging" then
+   elseif battery.status == "Discharging" then
       status_short = "D"
-   elseif status == "Charging" then
+   elseif battery.status == "Charging" then
       status_short = "C"
-   elseif status == "Unknown" then
+   elseif battery.status == "Unknown" then
       status_short = "U"
    else
-      status_short = " " .. status
+      status_short = " " .. battery.status
    end
 
-   io.input(battery.ac_path .. "/online")
-   local ac_online = io.read("*line")
    local ac_status_short = "?"
-   if ac_online == "1" then
+   if battery.ac_online == "1" then
       ac_status_short = "A/C"
-   elseif ac_online == "0" then
-      ac_status_short = "DC"
+   elseif battery.ac_online == "0" then
+      ac_status_short = "BAT"
+   else
+      ac_status_short = "UNK"
    end
    
-   battery.widget:set_text(ac_status_short .. " " .. perc .. status_short)
+   battery.widget:set_text(ac_status_short .. " " .. battery.perc .. status_short)
    battery.notify()
    return true
 end
