@@ -19,35 +19,49 @@ function battery.set_ac(ac)
 end
 
 function battery.read_state()
-   local f = io.open(battery.path .. "/capacity", "r")
-   battery.perc = f:read("*line")
-   f:close()
-
-   local f = io.open(battery.path .. "/status", "r")
-   battery.status = f:read("*line")
-   f:close()
-
-   f = io.input(battery.ac_path .. "/online", "r")
-   battery.ac_online = f:read("*line")
-   f:close()
+   battery.perc = read_line(battery.path .. "/capacity")
+   battery.status = read_line(battery.path .. "/status")
 end
 
-function battery.update()
-   battery.read_state()
+function read_line(filename)
+   f = io.input(filename, "r")
+   local t = f:read("*line")
+   f:close()
+   return t
+end
 
-   local status_short = "?"
-   if battery.status == "Full" then
-      status_short = "F"
-   elseif battery.status == "Discharging" then
-      status_short = "D"
-   elseif battery.status == "Charging" then
-      status_short = "C"
-   elseif battery.status == "Unknown" then
-      status_short = "U"
-   else
-      status_short = " " .. battery.status
+local previous_state = ""
+
+function battery.update()
+
+   local batstat = ""
+
+   if battery.path then
+      battery.read_state()
+
+      if previous_state ~= battery.status then
+	 naughty.notify({ title = "Battery ",
+			  text = battery.perc .. "% " .. battery.status,
+			  timeout = timeout })
+	 previous_state = battery.status
+      end
+
+      local status_short = "?"
+      if battery.status == "Full" then
+	 status_short = "F"
+      elseif battery.status == "Discharging" then
+	 status_short = "D"
+      elseif battery.status == "Charging" then
+	 status_short = "C"
+      elseif battery.status == "Unknown" then
+	 status_short = "U"
+      else
+	 status_short = " " .. battery.status
+      end
+      batstat = battery.perc .. status_short
    end
 
+   battery.ac_online = read_line(battery.ac_path .. "/online")
    local ac_status_short = "?"
    if battery.ac_online == "1" then
       ac_status_short = "A/C"
@@ -57,14 +71,14 @@ function battery.update()
       ac_status_short = "UNK"
    end
    
-   battery.widget:set_text(ac_status_short .. " " .. battery.perc .. status_short)
+   battery.widget:set_text(ac_status_short .. " " .. batstat)
    battery.notify()
    return true
 end
 
 function battery.notify_n(timeout)
-   naughty.notify({ title = "Battery " .. battery.perc .. "%",
-		    timeout = timeout })
+   -- naughty.notify({ title = "Battery " .. battery.perc .. "%",
+   -- 		    timeout = timeout })
 end   
 
 function battery.notify()
